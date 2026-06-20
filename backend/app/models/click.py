@@ -1,5 +1,5 @@
 from datetime import datetime
-from backend.app.models.link import Link
+from app.models.link import Link
 from sqlalchemy import String, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base

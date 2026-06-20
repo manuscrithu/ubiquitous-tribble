@@ -26,3 +26,7 @@ docker-compose.override.yml
 
 # claude
 CLAUDE.md
+
+# keys
+*.pem
+*.key*

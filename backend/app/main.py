@@ -2,16 +2,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
+from redis.asyncio import Redis
+from app.config import settings
 from app.database import engine, Base
 from app.routers import auth, links, redirect
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    app.state.redis = Redis.from_url(settings.redis_url, decode_responses=False)
     yield
+    await app.state.redis.aclose()
     await engine.dispose()
 
 
@@ -25,7 +28,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Prometheus metrics endpoint at /metrics
 Instrumentator().instrument(app).expose(app)
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
