@@ -127,5 +127,13 @@ jobs:
             cd ~/app
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
-            sleep 5
-            curl -f http://localhost:8000/health
+            for i in $(seq 1 20); do
+              if curl -sf http://localhost:8000/health > /dev/null; then
+                echo "Backend healthy after ${i} attempt(s)"
+                exit 0
+              fi
+              echo "Waiting for backend... (${i}/20)"
+              sleep 3
+            done
+            echo "Backend did not become healthy in time"
+            exit 1
