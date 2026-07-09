@@ -30,11 +30,12 @@ app.add_middleware(
 
 Instrumentator().instrument(app).expose(app)
 
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(links.router, prefix="/links", tags=["links"])
-app.include_router(redirect.router, tags=["redirect"])
-
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(links.router, prefix="/links", tags=["links"])
+app.include_router(redirect.router, tags=["redirect"])
