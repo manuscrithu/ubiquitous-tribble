@@ -38,6 +38,9 @@ export default function DashboardPage() {
       router.push("/login");
       return;
     }
+    // fetchLinks only calls its setState after `await api.get(...)` resolves,
+    // not synchronously — this is the standard fetch-on-mount effect pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLinks();
   }, [fetchLinks, router]);
 
