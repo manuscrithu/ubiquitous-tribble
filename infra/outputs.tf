@@ -9,6 +9,6 @@ output "vm_private_ip" {
 }
 
 output "ssh_command" {
-  description = "Ready-to-run SSH command to connect to your VM"
-  value       = "ssh -i ssh-key-2026-06-08.key ubuntu@${oci_core_instance.shortener_vm.public_ip}"
+  description = "Ready-to-run SSH command to connect to your VM (private key matching var.ssh_public_key_path)"
+  value       = "ssh -i ~/.ssh/id_rsa ubuntu@${oci_core_instance.shortener_vm.public_ip}"
 }
