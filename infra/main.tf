@@ -82,17 +82,6 @@ resource "oci_core_security_list" "shortener_sl" {
       max = 443
     }
   }
-
-  # Backend direct access — useful for testing before Nginx is set up
-  # Can be removed once Phase 4 is complete
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 8000
-      max = 8000
-    }
-  }
 }
 
 resource "oci_core_subnet" "shortener_subnet" {
