@@ -31,3 +31,6 @@ CLAUDE.md
 # keys
 *.pem
 *.key*
+
+# status files
+PROJECT_STATUS.md

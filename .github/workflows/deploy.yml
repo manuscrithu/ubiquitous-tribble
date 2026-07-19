@@ -116,6 +116,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync compose file and monitoring config to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_DEPLOY_KEY }}
+          source: "docker-compose.prod.yml,infra/monitoring"
+          target: "app"
+          strip_components: 0
+
       - name: Deploy to Oracle Cloud VM
         uses: appleboy/ssh-action@v1
         with:
