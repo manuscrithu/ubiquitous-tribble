@@ -54,7 +54,7 @@ services:
       - "3000:3000"
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.1
     restart: unless-stopped
     networks:
       - app-network
@@ -66,7 +66,7 @@ services:
       - "--storage.tsdb.retention.time=15d"
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.1.1
     restart: unless-stopped
     networks:
       - app-network
@@ -75,7 +75,7 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
 
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:3.1.1
     restart: unless-stopped
     networks:
       - app-network
@@ -83,12 +83,13 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./infra/monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - promtail_positions:/var/promtail
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
 
   node-exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.8.2
     restart: unless-stopped
     networks:
       - app-network
@@ -103,7 +104,7 @@ services:
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.2.0
     restart: unless-stopped
     networks:
       - app-network
@@ -111,7 +112,7 @@ services:
       - "127.0.0.1:3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
-      GF_SERVER_ROOT_URL: https://app.myslug.jo3.org/grafana/
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL}
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
     volumes:
       - grafana_data:/var/lib/grafana
@@ -126,6 +127,7 @@ volumes:
   prometheus_data:
   loki_data:
   grafana_data:
+  promtail_positions:
 
 networks:
   app-network:
