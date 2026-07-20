@@ -97,7 +97,9 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ghcr.io/${{ github.repository }}/backend:latest
+          tags: |
+            ghcr.io/${{ github.repository }}/backend:latest
+            ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
@@ -106,10 +108,14 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_API_URL=https://app.myslug.jo3.org/api
-          tags: ghcr.io/${{ github.repository }}/frontend:latest
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:latest
+            ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
 
   # ---------------------------------------------------------------------
-  # 3. Deploy — SSH into the VM, pull the new images, restart, verify
+  # 3. Deploy — SSH into the VM, pull the new images, restart, verify,
+  #    and automatically roll back to the last known-good deployment
+  #    (images + config) if the post-deploy health check fails.
   # ---------------------------------------------------------------------
   deploy:
     needs: build-and-push
@@ -117,6 +123,24 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Back up current config on VM before overwriting
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_DEPLOY_KEY }}
+          script: |
+            set -e
+            mkdir -p ~/app/.rollback
+            cd ~/app
+            if [ -f docker-compose.prod.yml ]; then
+              cp docker-compose.prod.yml .rollback/docker-compose.prod.yml
+            fi
+            if [ -d infra/monitoring ]; then
+              rm -rf .rollback/monitoring
+              cp -r infra/monitoring .rollback/monitoring
+            fi
 
       - name: Sync compose file and monitoring config to VM
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
@@ -128,24 +152,77 @@ jobs:
           target: "app"
           strip_components: 0
 
-      - name: Deploy to Oracle Cloud VM
+      - name: Deploy to Oracle Cloud VM (with automatic rollback on failure)
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_DEPLOY_KEY }}
+          envs: GITHUB_SHA
           script: |
             set -e
             cd ~/app
+
+            wait_for_health() {
+              retries="$1"
+              i=1
+              while [ "$i" -le "$retries" ]; do
+                if curl -sf http://localhost:8000/health > /dev/null; then
+                  echo "Backend healthy after ${i} attempt(s)"
+                  return 0
+                fi
+                echo "Waiting for backend... (${i}/${retries})"
+                sleep 5
+                i=$((i + 1))
+              done
+              return 1
+            }
+
+            export IMAGE_TAG="$GITHUB_SHA"
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
-            for i in $(seq 1 40); do
-              if curl -sf http://localhost:8000/health > /dev/null; then
-                echo "Backend healthy after ${i} attempt(s)"
-                exit 0
-              fi
-              echo "Waiting for backend... (${i}/40)"
-              sleep 5
-            done
-            echo "Backend did not become healthy in time"
+
+            set +e
+            wait_for_health 40
+            HEALTH_OK=$?
+            set -e
+
+            if [ "$HEALTH_OK" -eq 0 ]; then
+              echo "$GITHUB_SHA" > .last_good_sha
+              rm -rf .rollback
+              exit 0
+            fi
+
+            echo "Deploy failed health check — attempting automatic rollback"
+
+            if [ ! -f .last_good_sha ]; then
+              echo "No previous known-good deployment recorded — cannot roll back automatically. Manual intervention required."
+              exit 1
+            fi
+
+            LAST_GOOD_SHA=$(cat .last_good_sha)
+            echo "Rolling back to last known-good SHA: ${LAST_GOOD_SHA}"
+
+            if [ -f .rollback/docker-compose.prod.yml ]; then
+              cp .rollback/docker-compose.prod.yml docker-compose.prod.yml
+            fi
+            if [ -d .rollback/monitoring ]; then
+              rm -rf infra/monitoring
+              cp -r .rollback/monitoring infra/monitoring
+            fi
+
+            export IMAGE_TAG="$LAST_GOOD_SHA"
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+
+            set +e
+            wait_for_health 20
+            ROLLBACK_OK=$?
+            set -e
+
+            if [ "$ROLLBACK_OK" -eq 0 ]; then
+              echo "Rollback to ${LAST_GOOD_SHA} succeeded — service restored to last known-good version. This deploy is still marked failed."
+            else
+              echo "Rollback ALSO failed health check — manual intervention required immediately."
+            fi
             exit 1
