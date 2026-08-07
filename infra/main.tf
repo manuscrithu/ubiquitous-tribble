@@ -125,3 +125,19 @@ resource "oci_core_instance" "shortener_vm" {
     prevent_destroy = false  # Set to true once the VM is your long-lived server
   }
 }
+
+resource "oci_identity_dynamic_group" "shortener_vm_dg" {
+  compartment_id = var.tenancy_ocid   # dynamic groups are tenancy-level
+  name           = "shortener-vm-dynamic-group"
+  description    = "Matches the shortener VM instance"
+  matching_rule  = "ANY {instance.id = '${oci_core_instance.shortener_vm.id}'}"
+}
+
+resource "oci_identity_policy" "shortener_vm_vault_policy" {
+  compartment_id = var.compartment_ocid
+  name           = "shortener-vm-vault-policy"
+  description    = "Allow shortener VM to read its own secrets"
+  statements = [
+    "Allow dynamic-group ${oci_identity_dynamic_group.shortener_vm_dg.name} to read secret-family in compartment id ${var.compartment_ocid}"
+  ]
+}
