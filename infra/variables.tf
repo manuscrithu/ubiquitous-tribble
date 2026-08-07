@@ -44,3 +44,46 @@ variable "ssh_public_key_path" {
   type        = string
   default     = "~/.ssh/id_rsa.pub"
 }
+
+variable "postgres_password" {
+  description = "Password for the PostgreSQL database user."
+  type        = string
+  sensitive   = true
+}
+
+variable "postgres_user" {
+  description = "Username used to authenticate with the PostgreSQL database."
+  type        = string
+}
+
+variable "postgres_db" {
+  description = "Name of the PostgreSQL database used by the application."
+  type        = string
+}
+
+variable "secret_key" {
+  description = "Secret key used by the application for cryptographic signing and security-related operations."
+  type        = string
+  sensitive   = true
+}
+
+variable "next_public_api_url" {
+  description = "Public URL of the backend API used by the Next.js frontend."
+  type        = string
+}
+
+variable "github_repository" {
+  description = "URL or identifier of the GitHub repository containing the application source code."
+  type        = string
+}
+
+variable "grafana_password" {
+  description = "Password used to authenticate with the Grafana instance."
+  type        = string
+  sensitive   = true
+}
+
+variable "grafana_root_url" {
+  description = "Public root URL used to access the Grafana instance."
+  type        = string
+}
