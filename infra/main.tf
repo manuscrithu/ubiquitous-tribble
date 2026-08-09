@@ -138,6 +138,18 @@ resource "oci_identity_policy" "shortener_vm_vault_policy" {
   name           = "shortener-vm-vault-policy"
   description    = "Allow shortener VM to read its own secrets"
   statements = [
-    "Allow dynamic-group ${oci_identity_dynamic_group.shortener_vm_dg.name} to read secret-family in compartment id ${var.compartment_ocid}"
+    "Allow dynamic-group ${oci_identity_dynamic_group.shortener_vm_dg.name} to read secret-family in compartment id ${var.compartment_ocid}",
+    "Allow dynamic-group ${oci_identity_dynamic_group.shortener_vm_dg.name} to manage objects in compartment id ${var.compartment_ocid} where target.bucket.name = 'shortener-db-backups'"
   ]
+}
+
+resource "oci_objectstorage_bucket" "backups" {
+  compartment_id = var.compartment_ocid
+  namespace      = data.oci_objectstorage_namespace.ns.namespace
+  name           = "shortener-db-backups"
+  storage_tier   = "Standard"
+}
+
+data "oci_objectstorage_namespace" "ns" {
+  compartment_id = var.compartment_ocid
 }
