@@ -10,8 +10,6 @@ from app.routers import auth, links, redirect
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     app.state.redis = Redis.from_url(settings.redis_url, decode_responses=False)
     yield
     await app.state.redis.aclose()
