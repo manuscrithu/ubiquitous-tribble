@@ -87,3 +87,9 @@ variable "grafana_root_url" {
   description = "Public root URL used to access the Grafana instance."
   type        = string
 }
+
+variable "discord_webhook_url" {
+  description = "Discord webhook URL for Grafana alert notifications."
+  type        = string
+  sensitive   = true
+}
