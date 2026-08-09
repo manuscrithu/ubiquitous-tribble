@@ -53,6 +53,13 @@ jobs:
         working-directory: backend
         run: python -m pytest -v
 
+      - name: Audit Python dependencies
+        working-directory: backend
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt --desc
+        continue-on-error: true
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -71,6 +78,11 @@ jobs:
       - name: Type-check frontend
         working-directory: frontend
         run: npx tsc --noEmit
+
+      - name: Audit npm dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high
+        continue-on-error: true
 
   # ---------------------------------------------------------------------
   # 2. Build & push images to GHCR — only runs if tests passed
@@ -101,6 +113,13 @@ jobs:
             ghcr.io/${{ github.repository }}/backend:latest
             ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
 
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@v0.24.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: '0'   # non-blocking for now — tighten once baseline is triaged
+
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
         with:
@@ -111,6 +130,30 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/frontend:latest
             ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@v0.24.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: '0'   # non-blocking for now — tighten once baseline is triaged
+
+  # ---------------------------------------------------------------------
+  # 2b. Secret-leak scanning — independent of test/build, scans git
+  #     history rather than build artifacts, so it runs as its own job
+  # ---------------------------------------------------------------------
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks needs full history, not a shallow checkout
+
+      - name: Scan for leaked secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true   # non-blocking for now — tighten once baseline is triaged
 
   # ---------------------------------------------------------------------
   # 3. Deploy — SSH into the VM, pull the new images, restart, verify,
