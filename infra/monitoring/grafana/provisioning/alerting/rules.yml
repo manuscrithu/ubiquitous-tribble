@@ -10,6 +10,9 @@ groups:
         condition: C
         data:
           - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
             datasourceUid: prometheus-ds
             model:
               expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))
@@ -32,6 +35,9 @@ groups:
         condition: C
         data:
           - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
             datasourceUid: prometheus-ds
             model:
               expr: histogram_quantile(0.99, sum(rate(http_request_duration_highr_seconds_bucket[5m])) by (le))
@@ -54,6 +60,9 @@ groups:
         condition: C
         data:
           - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
             datasourceUid: prometheus-ds
             model:
               expr: up{job="backend"}
@@ -76,6 +85,9 @@ groups:
         condition: C
         data:
           - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
             datasourceUid: prometheus-ds
             model:
               expr: 100 - ((node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"})
@@ -98,6 +110,9 @@ groups:
         condition: C
         data:
           - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
             datasourceUid: prometheus-ds
             model:
               expr: (node_memory_MemAvailable_bytes + node_memory_SwapFree_bytes) / (node_memory_MemTotal_bytes + node_memory_SwapTotal_bytes) * 100
