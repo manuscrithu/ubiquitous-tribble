@@ -101,3 +101,14 @@ resource "oci_vault_secret" "grafana_root_url" {
     content      = base64encode(var.grafana_root_url)
   }
 }
+
+resource "oci_vault_secret" "discord_webhook_url" {
+  compartment_id = var.compartment_ocid
+  vault_id       = oci_kms_vault.shortener_vault.id
+  key_id         = oci_kms_key.shortener_key.id
+  secret_name    = "shortener-discord-webhook-url"
+  secret_content {
+    content_type = "BASE64"
+    content      = base64encode(var.discord_webhook_url)
+  }
+}
